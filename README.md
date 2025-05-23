@@ -6,7 +6,8 @@ Dự án này xây dựng một kiến trúc Data Lakehouse hiện đại kết 
 
 ## System Architecture
 
-![Data Lakehouse Architecture](https://i.imgur.com/XYkUJfx.png)
+<img width="927" alt="image" src="https://github.com/user-attachments/assets/f16f9ea5-dadc-4ddd-a4fb-7864170b0ee2" />
+https://www.dremio.com/reference-architecture/
 
 ```mermaid
 flowchart TB
