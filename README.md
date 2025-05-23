@@ -4,6 +4,39 @@
 
 Dự án này xây dựng một kiến trúc Data Lakehouse hiện đại kết hợp nhiều công nghệ Big Data để xử lý và phân tích dữ liệu nhân khẩu học của các thành phố tại Mỹ. Hệ thống được thiết kế như một nền tảng dữ liệu hoàn chỉnh sử dụng Docker Container để dễ dàng triển khai và mở rộng.
 
+## System Architecture
+
+![Data Lakehouse Architecture](https://i.imgur.com/XYkUJfx.png)
+
+Hệ thống Data Lakehouse được thiết kế với kiến trúc phân tầng như sau:
+
+### Ingestion Layer (Tầng Thu Thập)
+Lớp này chịu trách nhiệm thu thập dữ liệu từ nhiều nguồn khác nhau. Trong dự án này, chúng ta sử dụng PostgreSQL làm nguồn dữ liệu chính. Dữ liệu nhân khẩu học của các thành phố tại Mỹ được nạp vào PostgreSQL và sau đó được trích xuất thông qua cơ chế CDC (Change Data Capture).
+
+### Storage Layer (Tầng Lưu Trữ)
+Tầng này bao gồm MinIO làm hệ thống lưu trữ đối tượng tương thích S3, kết hợp với Apache Iceberg làm định dạng bảng cho Data Lake. Nessie được tích hợp để cung cấp khả năng kiểm soát phiên bản cho các bảng Iceberg. Cấu trúc này cho phép:
+- Lưu trữ dữ liệu với chi phí thấp và khả năng mở rộng cao
+- Hỗ trợ giao dịch ACID đầy đủ
+- Quản lý schema evolution
+- Khả năng time travel (du hành thời gian) giữa các phiên bản dữ liệu
+
+### Processing Layer (Tầng Xử Lý)
+Apache Flink đóng vai trò chính trong việc xử lý dữ liệu, cung cấp khả năng xử lý luồng dữ liệu theo thời gian thực. Flink được sử dụng để:
+- Xử lý dữ liệu từ CDC PostgreSQL
+- Biến đổi dữ liệu theo yêu cầu
+- Ghi dữ liệu vào bảng Iceberg trong MinIO
+
+### Orchestration Layer (Tầng Điều Phối)
+Apache Airflow được sử dụng để điều phối và tự động hóa các quy trình ETL (Extract, Transform, Load). Airflow giúp lập lịch và giám sát các pipeline dữ liệu, đảm bảo rằng dữ liệu được xử lý đúng thời điểm và theo đúng trình tự.
+
+### Query & Visualization Layer (Tầng Truy Vấn & Trực Quan Hóa)
+Lớp này bao gồm:
+- Dremio: Cung cấp giao diện SQL và khả năng truy vấn tối ưu đến dữ liệu Iceberg
+- Apache Superset: Cung cấp công cụ trực quan hóa dữ liệu mạnh mẽ
+- Jupyter Notebook: Môi trường phân tích dữ liệu linh hoạt cho các nhà khoa học dữ liệu
+
+Kiến trúc phân tầng này cho phép xây dựng một hệ thống dữ liệu hiện đại có khả năng mở rộng, linh hoạt và hiệu quả. Mỗi thành phần có thể được cập nhật hoặc thay thế độc lập mà không ảnh hưởng đến toàn bộ hệ thống.
+
 ## Kiến Trúc Hệ Thống
 
 ### 1. Thành Phần Lưu Trữ Dữ Liệu
