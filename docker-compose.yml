@@ -1,0 +1,204 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: airflow  # Default database to connect
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - iceberg_env
+
+  # pgAdmin for PostgreSQL Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+    networks:
+      - iceberg_env
+
+  # Flink JobManager
+  jobmanager:
+    image: flink:latest
+    container_name: jobmanager
+    ports:
+      - "8081:8081"  # Flink Web UI
+      - "6123:6123"  # RPC Port
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    command: jobmanager
+    volumes:
+      - flink_jobmanager_data:/opt/flink/data
+    networks:
+      - iceberg_env
+
+  # Flink TaskManager
+  taskmanager:
+    image: flink:latest
+    container_name: taskmanager
+    ports:
+      - "6122:6122"
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    command: taskmanager
+    volumes:
+      - flink_taskmanager_data:/opt/flink/data
+    depends_on:
+      - jobmanager
+    networks:
+      - iceberg_env
+
+  # MinIO for Object Storage
+  minioserver:
+    image: minio/minio
+    container_name: minioserver
+    ports:
+      - "9000:9000"  # MinIO API
+      - "9001:9001"  # MinIO Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - iceberg_env
+
+  # Nessie for Iceberg Catalog
+  nessie:
+    image: projectnessie/nessie
+    container_name: nessie
+    ports:
+      - "19120:19120"
+    networks:
+      - iceberg_env
+
+  # Dremio for Querying
+  dremio:
+    platform: linux/x86_64
+    image: dremio/dremio-oss:latest
+    container_name: dremio
+    ports:
+      - "9047:9047"
+      - "31010:31010"
+      - "32010:32010"
+    volumes:
+      - dremio_data:/var/lib/dremio
+    networks:
+      - iceberg_env
+
+  # Airflow for Orchestration
+  airflow-webserver:
+    image: apache/airflow:2.6.0
+    container_name: airflow-webserver
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
+      airflow webserver --port 8080
+      "
+    depends_on:
+      - postgres
+    networks:
+      - iceberg_env
+
+  airflow-scheduler:
+    image: apache/airflow:2.6.0
+    container_name: airflow-scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: airflow scheduler
+    depends_on:
+      - postgres
+    networks:
+      - iceberg_env
+
+  # Apache Superset for Dashboarding
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    ports:
+      - "8088:8088"  # Superset Web UI
+    environment:
+      SUPERSET_ENV: production
+      SUPERSET_SECRET_KEY: "this_is_a_secret_key"
+      SUPERSET_DB__URI: sqlite:////var/lib/superset/superset.db
+      SUPERSET_ADMIN_USERNAME: admin
+      SUPERSET_ADMIN_PASSWORD: admin
+      SUPERSET_ADMIN_FIRST_NAME: admin
+      SUPERSET_ADMIN_LAST_NAME: admin
+      SUPERSET_ADMIN_EMAIL: admin@admin.com
+    volumes:
+      - superset_data:/var/lib/superset
+    depends_on:
+      - dremio  # Superset connects to Dremio for Iceberg querying
+    networks:
+      - iceberg_env
+
+  # Jupyter Notebook for Data Analysis
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    container_name: jupyter
+    ports:
+      - "8888:8888"  # Jupyter Notebook
+    environment:
+ #     JUPYTER_ENABLE_LAB: "yes"
+       JUPYTER_ENABLE_LAB: "yes"
+       JUPYTER_TOKEN: ""
+       JUPYTER_PASSWORD: 123456aA@
+    user: root  # Chạy container với quyền root
+    volumes:
+      # - ./notebooks:/home/jovyan/work  # Mount notebooks directory
+      # - jupyter_data:/home/jovyan/.local/share/jupyter  # Volume lưu trữ dữ liệu runtime
+      - ./notebooks:/home/jovyan/work
+      - ./jupyter_data:/home/jovyan/.local/share/jupyter
+      - ./jupyter_runtime:/home/jovyan/.local/share/jupyter/runtime
+    depends_on:
+      - dremio  # Jupyter kết nối với Dremio để truy vấn Iceberg
+    networks:
+      - iceberg_env
+
+volumes:
+  postgres_data:
+  airflow_logs:
+  airflow_plugins:
+  superset_data:
+  flink_jobmanager_data:
+  flink_taskmanager_data:
+  minio_data:
+  dremio_data:
+  jupyter_data:
+
+networks:
+  iceberg_env:
+    driver: bridge
