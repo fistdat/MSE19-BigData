@@ -8,6 +8,46 @@ Dự án này xây dựng một kiến trúc Data Lakehouse hiện đại kết 
 
 ![Data Lakehouse Architecture](https://i.imgur.com/XYkUJfx.png)
 
+```mermaid
+flowchart TB
+    subgraph "Ingestion Layer"
+        A[Source Data] --> B[PostgreSQL]
+        B --> C[CDC Change Data Capture]
+    end
+    
+    subgraph "Processing Layer"
+        C --> D[Apache Flink]
+    end
+    
+    subgraph "Storage Layer"
+        D --> E[Apache Iceberg]
+        E --> F[MinIO S3]
+        G[Nessie Catalog] --> E
+    end
+    
+    subgraph "Orchestration Layer"
+        H[Apache Airflow] --> D
+    end
+    
+    subgraph "Query & Visualization Layer"
+        F --> I[Dremio]
+        I --> J[Apache Superset]
+        I --> K[Jupyter Notebook]
+    end
+    
+    classDef ingest fill:#ffcccc,stroke:#ff0000
+    classDef process fill:#ccffcc,stroke:#00ff00
+    classDef storage fill:#ccccff,stroke:#0000ff
+    classDef orch fill:#ffffcc,stroke:#ffff00
+    classDef visual fill:#ffccff,stroke:#ff00ff
+    
+    class A,B,C ingest
+    class D process
+    class E,F,G storage
+    class H orch
+    class I,J,K visual
+```
+
 Hệ thống Data Lakehouse được thiết kế với kiến trúc phân tầng như sau:
 
 ### Ingestion Layer (Tầng Thu Thập)
