@@ -1,0 +1,43 @@
+# Flink Configuration for Data Lakehouse
+# JobManager configuration
+jobmanager.rpc.address: jobmanager
+jobmanager.rpc.port: 6123
+jobmanager.memory.process.size: 1600m
+jobmanager.memory.flink.size: 1280m
+
+# TaskManager configuration  
+taskmanager.numberOfTaskSlots: 2
+taskmanager.memory.process.size: 2048m
+taskmanager.memory.flink.size: 1600m
+
+# Parallelism configuration
+parallelism.default: 2
+
+# Restart strategy
+restart-strategy: fixed-delay
+restart-strategy.fixed-delay.attempts: 3
+restart-strategy.fixed-delay.delay: 10 s
+
+# Checkpointing configuration
+execution.checkpointing.interval: 60s
+execution.checkpointing.mode: EXACTLY_ONCE
+execution.checkpointing.timeout: 600s
+execution.checkpointing.max-concurrent-checkpoints: 1
+
+# State backend configuration for S3
+state.backend: rocksdb
+state.checkpoints.dir: s3a://lakehouse/checkpoints
+state.savepoints.dir: s3a://lakehouse/savepoints
+
+# S3 configuration for MinIO
+s3.access-key: minioadmin
+s3.secret-key: minioadmin
+s3.endpoint: http://minioserver:9000
+s3.path.style.access: true
+
+# Iceberg catalog configuration
+table.sql-dialect: default
+
+# Web UI configuration
+web.submit.enable: true
+web.upload.dir: /opt/flink/data 
