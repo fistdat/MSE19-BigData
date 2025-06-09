@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # PostgreSQL Database
   postgres:
@@ -9,11 +7,24 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: airflow  # Default database to connect
+      # PostgreSQL configuration for CDC
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/
+      - ./dataset/citizen/us-cities-demographics.csv:/docker-entrypoint-initdb.d/us-cities-demographics.csv
+    command: 
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_replication_slots=10"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "log_statement=all"
     networks:
       - iceberg_env
 
@@ -33,7 +44,7 @@ services:
 
   # Flink JobManager
   jobmanager:
-    image: flink:latest
+    build: ./flink
     container_name: jobmanager
     ports:
       - "8081:8081"  # Flink Web UI
@@ -43,12 +54,17 @@ services:
     command: jobmanager
     volumes:
       - flink_jobmanager_data:/opt/flink/data
+      - ./flink/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml
+    depends_on:
+      - postgres
+      - minioserver
+      - nessie
     networks:
       - iceberg_env
 
   # Flink TaskManager
   taskmanager:
-    image: flink:latest
+    build: ./flink
     container_name: taskmanager
     ports:
       - "6122:6122"
@@ -57,6 +73,7 @@ services:
     command: taskmanager
     volumes:
       - flink_taskmanager_data:/opt/flink/data
+      - ./flink/flink-conf.yaml:/opt/flink/conf/flink-conf.yaml
     depends_on:
       - jobmanager
     networks:
