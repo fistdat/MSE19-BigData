@@ -1,0 +1,25 @@
+FROM apache/flink:1.18.3-scala_2.12-java11
+
+# Set working directory
+WORKDIR /opt/flink
+
+# Download required connectors for CDC and Iceberg
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/com/ververica/flink-connector-postgres-cdc/2.4.2/flink-connector-postgres-cdc-2.4.2.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.17/1.4.3/iceberg-flink-runtime-1.17-1.4.3.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.367/aws-java-sdk-bundle-1.12.367.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/nessie/nessie-flink/0.67.0/nessie-flink-0.67.0.jar
+
+# Create Flink configuration for SQL Client Web UI
+RUN echo "sql-client.execution.result-mode: table" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "sql-client.execution.max-table-result.rows: 10000" >> /opt/flink/conf/flink-conf.yaml
+
+# Copy SQL client configuration if exists
+COPY --chown=flink:flink sql-client-conf.yaml /opt/flink/conf/ 2>/dev/null || true
+
+# Expose ports
+EXPOSE 8081 6123 6124 6125
+
+# Default command
+CMD ["help"] 

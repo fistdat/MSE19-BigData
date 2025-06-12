@@ -1,0 +1,47 @@
+FROM flink:1.18.1-scala_2.12
+
+# Set working directory
+WORKDIR /opt/flink
+
+# Download Flink 1.18 compatible connectors
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/com/ververica/flink-connector-postgres-cdc/2.4.2/flink-connector-postgres-cdc-2.4.2.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.1.0-1.18/flink-sql-connector-kafka-3.1.0-1.18.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar
+
+# Apache Iceberg JARs (Compatible với Flink 1.18) - Use Iceberg 1.4.3 which is stable
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.18/1.4.3/iceberg-flink-runtime-1.18-1.4.3.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-nessie/1.4.3/iceberg-nessie-1.4.3.jar
+
+# AWS S3 Integration cho MinIO
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.367/aws-java-sdk-bundle-1.12.367.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.3.4/hadoop-common-3.3.4.jar
+
+# Nessie Catalog Integration for Iceberg 1.4.3
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/projectnessie/nessie-client/0.67.0/nessie-client-0.67.0.jar
+
+# Configure Flink for Iceberg và SQL Client
+RUN echo "sql-client.execution.result-mode: table" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "sql-client.execution.max-table-result.rows: 10000" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "execution.checkpointing.interval: 60s" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "state.backend: filesystem" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "state.checkpoints.dir: file:///tmp/flink-checkpoints" >> /opt/flink/conf/flink-conf.yaml
+
+# Create directories
+RUN mkdir -p /tmp/flink-checkpoints && \
+    mkdir -p /tmp/lakehouse && \
+    chown -R flink:flink /tmp/flink-checkpoints /tmp/lakehouse
+
+# Copy configuration files if they exist
+# COPY --chown=flink:flink flink-conf.yaml /opt/flink/conf/ 2>/dev/null || true
+
+# Expose ports
+EXPOSE 8081 6123 6124 6125
+
+# Set environment variables for Iceberg
+ENV ICEBERG_VERSION=1.4.3
+ENV NESSIE_VERSION=0.67.0
+ENV HADOOP_CLASSPATH=/opt/flink/lib/hadoop-aws-3.3.4.jar:/opt/flink/lib/aws-java-sdk-bundle-1.12.367.jar
+
+# Default command
+CMD ["help"] 

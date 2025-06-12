@@ -1,0 +1,30 @@
+{
+  "name": "iceberg-demographics-sink",
+  "config": {
+    "connector.class": "org.apache.iceberg.connect.IcebergSinkConnector",
+    "tasks.max": "1",
+    "topics": "demographics_server.public.demographics",
+    
+    "iceberg.catalog.type": "nessie",
+    "iceberg.catalog.uri": "http://nessie:19120/api/v1",
+    "iceberg.catalog.ref": "main",
+    "iceberg.catalog.warehouse": "s3://lakehouse",
+    
+    "iceberg.catalog.s3.endpoint": "http://minioserver:9000",
+    "iceberg.catalog.s3.access-key-id": "minioadmin", 
+    "iceberg.catalog.s3.secret-access-key": "minioadmin123",
+    "iceberg.catalog.s3.path-style-access": "true",
+    
+    "iceberg.table.namespace": "demographics_db",
+    "iceberg.table.name": "demographics",
+    "iceberg.table.auto-create": "true",
+    
+    "upsert": "true",
+    "upsert.keep-deletes": "true",
+    
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false"
+  }
+}

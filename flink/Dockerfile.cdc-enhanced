@@ -1,0 +1,30 @@
+# ===== ENHANCED FLINK WITH CDC CONNECTORS =====
+# Flink 1.18.3 with Kafka, PostgreSQL CDC, and S3 connectors
+
+FROM flink:1.18.1-scala_2.12-java11
+
+# Set working directory
+WORKDIR /opt/flink
+
+# Download and install connectors
+RUN wget -P /opt/flink/lib/ \
+    # Kafka connector (correct version for Flink 1.18)
+    https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.2.0-1.18/flink-sql-connector-kafka-3.2.0-1.18.jar && \
+    \
+    # PostgreSQL CDC connector (version compatible with Flink 1.18)
+    wget -P /opt/flink/lib/ \
+    https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-postgres-cdc/3.1.0/flink-sql-connector-postgres-cdc-3.1.0.jar && \
+    \
+    # PostgreSQL JDBC driver
+    wget -P /opt/flink/lib/ \
+    https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar
+
+# Configure Flink for basic operation (no S3 to avoid conflicts)
+RUN echo "execution.checkpointing.interval: 10s" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "execution.checkpointing.mode: EXACTLY_ONCE" >> /opt/flink/conf/flink-conf.yaml
+
+# Expose ports
+EXPOSE 8081 6123 6124
+
+# Start with proper logging
+CMD ["help"] 

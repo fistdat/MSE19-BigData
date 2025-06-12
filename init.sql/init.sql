@@ -1,8 +1,8 @@
 -- PostgreSQL Initialization Script for Data Lakehouse
 -- Cấu hình WAL (Write-Ahead Logging) cho CDC
 
--- Tạo database cho demographics data
-CREATE DATABASE demographics;
+-- Database demographics đã được tạo tự động bởi POSTGRES_DB
+-- CREATE DATABASE demographics;
 
 -- Tạo user chuyên dụng cho CDC với quyền replication
 CREATE USER cdc_user WITH ENCRYPTED PASSWORD 'cdc_password';

@@ -1,0 +1,119 @@
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+WARNING: Unknown module: jdk.compiler specified to --add-exports
+Jun 12, 2025 9:46:01 AM org.jline.utils.Log logr
+WARNING: Unable to create a system terminal, creating a dumb terminal (enable debug logging for more information)
+[34;1m[INFO] Executing SQL from file.[0m
+
+Command history file path: /root/.flink-sql-history
+Flink SQL> -- =============================================================================
+> -- NESSIE CDC TO ICEBERG LAKEHOUSE JOB (FINAL)
+> -- =============================================================================
+> -- Complete CDC pipeline: PostgreSQL → Kafka → Flink → Iceberg (Nessie catalog)[34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> 
+> -- Configure Nessie Iceberg catalog (WORKING!)
+> CREATE CATALOG iceberg_catalog WITH (
+>     'type' = 'iceberg',
+>     'catalog-impl' = 'org.apache.iceberg.nessie.NessieCatalog',
+>     'io-impl' = 'org.apache.iceberg.aws.s3.S3FileIO',
+>     'uri' = 'http://nessie:19120/api/v1',
+>     'authentication.type' = 'none',
+>     'ref' = 'main',
+>     'warehouse' = 's3a://warehouse/',
+>     's3.endpoint' = 'http://minioserver:9000',
+>     's3.access-key-id' = 'DKZjmhls7nwxBN4GJfXC',
+>     's3.secret-access-key' = 'kNuAZodphLEGKHv5EmbyiDt1v5eT0yVErjVFyg0t',
+>     's3.path-style-access' = 'true',
+>     's3.region' = 'us-east-1'
+> )[34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> [34;1m[INFO] Execute statement succeed.[0m
+
+Flink SQL> 
+> -- Create Kafka CDC source table
+> CREATE TABLE kafka_cdc_source (
+>     `before` ROW<
+>         city STRING,
+>         state STRING,
+>         median_age DOUBLE,
+>         male_population INT,
+>         female_population INT,
+>         total_population INT,
+>         number_of_veterans INT,
+>         foreign_born INT,
+>         average_household_size DOUBLE,
+>         state_code STRING,
+>         race STRING,
+>         population_count INT
+>     >,
+>     `after` ROW<
+>         city STRING,
+>         state STRING,
+>         median_age DOUBLE,
+>         male_population INT,
+>         female_population INT,
+>         total_population INT,
+>         number_of_veterans INT,
+>         foreign_born INT,
+>         average_household_size DOUBLE,
+>         state_code STRING,
+>         race STRING,
+>         population_count INT
+>     >,
+>     `op` STRING,
+>     `ts_ms` BIGINT,
+>     `source` ROW<
+>         version STRING,
+>         connector STRING,
+>         name STRING,
+>         ts_ms BIGINT,
+>         snapshot STRING,
+>         db STRING,
+>         sequence STRING,
+>         schema STRING,
+>         `table` STRING,
+>         txId BIGINT,
+>         lsn BIGINT,
+>         xmin BIGINT
+>     >
+> ) WITH (
+>     'connector' = 'kafka',
+>     'topic' = 'demographics_server.public.demographics',
+>     'properties.bootstrap.servers' = 'kafka:9092',
+>     'properties.group.id' = 'flink-nessie-iceberg-consumer',
+>     'scan.startup.mode' = 'earliest-offset',
+>     'format' = 'json',
+>     'json.fail-on-missing-field' = 'false',
+>     'json.ignore-parse-errors' = 'true'
+> )[31;1m[ERROR] Could not execute SQL statement. Reason:
+org.apache.iceberg.exceptions.AlreadyExistsException: Table already exists: lakehouse.kafka_cdc_source[0m
+
+Shutting down the session...
+done.

@@ -12,83 +12,29 @@ services:
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/
-      - postgres_data:/var/lib/postgresql/data
+      - ./dataset:/var/lib/postgresql/data/dataset
     ports:
       - "5432:5432"
     command: |
       postgres
       -c wal_level=logical
-      -c max_wal_senders=3
-      -c max_replication_slots=3
+      -c max_wal_senders=1
+      -c max_replication_slots=1
       -c shared_preload_libraries=pgoutput
-      -c log_statement=all
-      -c log_min_duration_statement=0
     networks:
       - data-lakehouse
 
-  # Zookeeper for Kafka
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - data-lakehouse
-
-  # Kafka Message Broker
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    networks:
-      - data-lakehouse
-
-  # Kafka Connect with Debezium
-  debezium:
-    image: debezium/connect:2.4
-    container_name: debezium
-    depends_on:
-      - kafka
-      - postgres
-    ports:
-      - "8083:8083"
-    environment:
-      GROUP_ID: 1
-      CONFIG_STORAGE_TOPIC: debezium_configs
-      OFFSET_STORAGE_TOPIC: debezium_offsets
-      STATUS_STORAGE_TOPIC: debezium_statuses
-      BOOTSTRAP_SERVERS: kafka:9092
-      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
-      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
-    networks:
-      - data-lakehouse
-
-  # Flink JobManager (1.18.1 with Iceberg 1.9.1)
+  # Flink JobManager (1.18.3)
   jobmanager:
     build:
       context: ./flink
-      dockerfile: Dockerfile.iceberg-latest
+      dockerfile: Dockerfile.1.18
     container_name: jobmanager
     ports:
       - "8081:8081"
     command: jobmanager
     environment:
-      - AWS_REGION=us-east-1
+      - FLINK_PROPERTIES=jobmanager.rpc.address: jobmanager
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
@@ -97,33 +43,26 @@ services:
         sql-client.execution.result-mode: table
         web.submit.enable: true
         rest.flamegraph.enabled: true
-        state.backend: filesystem
-        state.checkpoints.dir: file:///tmp/flink-checkpoints
-        execution.checkpointing.interval: 60s
-    volumes:
-      - flink_checkpoints:/tmp/flink-checkpoints
     networks:
       - data-lakehouse
 
-  # Flink TaskManager (1.18.1 with Iceberg 1.9.1)
+  # Flink TaskManager (1.18.3)
   taskmanager:
     build:
       context: ./flink
-      dockerfile: Dockerfile.iceberg-latest
+      dockerfile: Dockerfile.1.18
     container_name: taskmanager
     depends_on:
       - jobmanager
     command: taskmanager
     scale: 1
     environment:
-      - AWS_REGION=us-east-1
+      - FLINK_PROPERTIES=jobmanager.rpc.address: jobmanager
       - |
         FLINK_PROPERTIES=
         jobmanager.rpc.address: jobmanager
         taskmanager.numberOfTaskSlots: 2
         parallelism.default: 1
-    volumes:
-      - flink_checkpoints:/tmp/flink-checkpoints
     networks:
       - data-lakehouse
 
@@ -149,22 +88,6 @@ services:
     container_name: nessie
     ports:
       - "19120:19120"
-    networks:
-      - data-lakehouse
-
-  # Kafka UI for monitoring
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "8082:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
-      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://debezium:8083
     networks:
       - data-lakehouse
 
@@ -268,14 +191,12 @@ services:
       - data-lakehouse
 
 volumes:
-  postgres_data:
   minio_data:
   dremio_data:
   superset_data:
   jupyter_data:
   airflow_data:
   pgadmin_data:
-  flink_checkpoints:
 
 networks:
   data-lakehouse:

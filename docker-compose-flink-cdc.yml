@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # ===== ENHANCED FLINK WITH CDC CONNECTORS =====
+  
+  jobmanager-cdc:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile.cdc-enhanced
+    container_name: jobmanager-cdc
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager-cdc
+        parallelism.default: 2
+        jobmanager.memory.process.size: 1600m
+        taskmanager.memory.process.size: 1728m
+        taskmanager.numberOfTaskSlots: 4
+    networks:
+      - data-lakehouse
+
+  taskmanager-cdc:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile.cdc-enhanced
+    container_name: taskmanager-cdc
+    depends_on:
+      - jobmanager-cdc
+    command: taskmanager
+    scale: 1
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager-cdc
+        taskmanager.numberOfTaskSlots: 4
+        parallelism.default: 2
+        taskmanager.memory.process.size: 1728m
+    networks:
+      - data-lakehouse
+
+networks:
+  data-lakehouse:
+    external: true
+    name: project04_data-lakehouse 

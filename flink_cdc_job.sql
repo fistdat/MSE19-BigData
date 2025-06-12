@@ -1,19 +1,15 @@
--- =================================================================
--- Data Lakehouse CDC Pipeline: PostgreSQL → Flink → Iceberg → MinIO
--- =================================================================
-
--- Set job configurations
+-- Flink SQL CDC Job Configuration
 SET 'execution.checkpointing.interval' = '10s';
 SET 'execution.checkpointing.mode' = 'EXACTLY_ONCE';
 SET 'table.exec.source.idle-timeout' = '30s';
 
--- S3 Configuration cho MinIO
+-- S3/MinIO Configuration
 SET 's3.endpoint' = 'http://minioserver:9000';
 SET 's3.access-key' = 'minioadmin';
 SET 's3.secret-key' = 'minioadmin';
 SET 's3.path.style.access' = 'true';
 
--- Định nghĩa source table từ PostgreSQL với CDC
+-- Create CDC Source Table
 CREATE TABLE postgres_demographics (
     city STRING,
     state STRING,
@@ -26,9 +22,7 @@ CREATE TABLE postgres_demographics (
     average_household_size DOUBLE,
     state_code STRING,
     race STRING,
-    count INT,
-    -- CDC metadata fields
-    _event_time AS PROCTIME()
+    count INT
 ) WITH (
     'connector' = 'postgres-cdc',
     'hostname' = 'postgres',
@@ -43,7 +37,7 @@ CREATE TABLE postgres_demographics (
     'decoding.plugin.name' = 'pgoutput'
 );
 
--- Định nghĩa sink table trên Iceberg với MinIO S3
+-- Create Iceberg Sink Table
 CREATE TABLE iceberg_demographics (
     city STRING,
     state STRING,
@@ -70,14 +64,13 @@ CREATE TABLE iceberg_demographics (
     'format-version' = '2',
     'write.format.default' = 'parquet',
     'write.upsert.enabled' = 'true',
-    -- S3 Configuration for MinIO
     's3.endpoint' = 'http://minioserver:9000',
     's3.access-key-id' = 'minioadmin',
     's3.secret-access-key' = 'minioadmin',
     's3.path-style-access' = 'true'
 );
 
--- CDC Pipeline: Real-time ingestion với timestamp
+-- Start CDC Pipeline
 INSERT INTO iceberg_demographics
 SELECT 
     city,

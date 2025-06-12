@@ -1,0 +1,50 @@
+FROM flink:1.18.1-scala_2.12
+
+# Set working directory
+WORKDIR /opt/flink
+
+# Download Flink 1.18 compatible connectors 
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/com/ververica/flink-connector-postgres-cdc/2.4.2/flink-connector-postgres-cdc-2.4.2.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka/3.1.0-1.18/flink-connector-kafka-3.1.0-1.18.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar
+
+# Apache Iceberg 1.9.1 JARs (Latest with Flink 1.18 support)
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.18/1.9.1/iceberg-flink-runtime-1.18-1.9.1.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-nessie/1.9.1/iceberg-nessie-1.9.1.jar
+
+# AWS SDK and Hadoop dependencies for Iceberg with S3/MinIO
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.29.52/bundle-2.29.52.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/software/amazon/awssdk/url-connection-client/2.29.52/url-connection-client-2.29.52.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.4.1/hadoop-common-3.4.1.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-hdfs/3.4.1/hadoop-hdfs-3.4.1.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client-api/3.4.1/hadoop-client-api-3.4.1.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client-runtime/3.4.1/hadoop-client-runtime-3.4.1.jar
+
+# S3 and FileSystem dependencies  
+RUN wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/flink/flink-s3-fs-hadoop/1.18.1/flink-s3-fs-hadoop-1.18.1.jar && \
+    wget -P /opt/flink/lib/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar
+
+# Set proper permissions
+RUN chown -R flink:flink /opt/flink/lib
+
+# Configure Flink for Iceberg and SQL Client
+RUN echo "sql-client.execution.result-mode: table" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "sql-client.execution.max-table-result.rows: 10000" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "execution.checkpointing.interval: 60s" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "state.backend: filesystem" >> /opt/flink/conf/flink-conf.yaml && \
+    echo "state.checkpoints.dir: file:///tmp/flink-checkpoints" >> /opt/flink/conf/flink-conf.yaml
+
+# Create directories
+RUN mkdir -p /tmp/flink-checkpoints && \
+    mkdir -p /tmp/lakehouse && \
+    chown -R flink:flink /tmp/flink-checkpoints /tmp/lakehouse
+
+# Set environment variables for Iceberg
+ENV ICEBERG_VERSION=1.9.1
+ENV HADOOP_CLASSPATH=/opt/flink/lib/bundle-2.29.52.jar:/opt/flink/lib/flink-s3-fs-hadoop-1.18.1.jar
+
+# Expose ports
+EXPOSE 8081 6123 6124 6125
+
+# Default command
+CMD ["help"] 
